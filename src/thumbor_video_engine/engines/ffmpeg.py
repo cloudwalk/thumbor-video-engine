@@ -232,6 +232,11 @@ class Engine(BaseEngine):
             config_key = ('ffmpeg_%s_%s' % (format, prop)).upper()
             return getattr(self.context.config, config_key)
 
+    @property
+    def audio_flag(self):
+        # If FFMPEG_PRESERVE_AUDIO is False, add '-an' to disable audio
+        return ['-an'] if not getattr(self.context.config, 'FFMPEG_PRESERVE_AUDIO', False) else []
+
     def transcode_to_webp(self, src_file):
         is_lossless = self.get_config('lossless', 'webp')
         if is_lossless or self.has_transparency():
@@ -242,8 +247,11 @@ class Engine(BaseEngine):
         vf_flags = ['-vf', ','.join(self.ffmpeg_vfilters)] if self.ffmpeg_vfilters else []
 
         flags = [
-            '-loop', '0', '-an', '-pix_fmt', pix_fmt, '-movflags', 'faststart',
-        ] + vf_flags + ['-f', 'webp']
+            '-loop', '0',
+            '-pix_fmt', pix_fmt, '-movflags', 'faststart',
+        ] + vf_flags
+        flags += self.audio_flag
+        flags += ['-f', 'webp']
 
         if is_lossless:
             flags += ['-lossless', '1']
@@ -320,9 +328,12 @@ class Engine(BaseEngine):
     def transcode_to_vp9(self, src_file):
         vf_flags = ['-vf', ','.join(self.ffmpeg_vfilters)] if self.ffmpeg_vfilters else []
         flags = [
-            '-c:v', 'libvpx-vp9', '-loop', '0', '-an', '-pix_fmt', 'yuv420p',
+            '-c:v', 'libvpx-vp9', '-loop', '0',
+            '-pix_fmt', 'yuv420p',
             '-movflags', 'faststart',
-        ] + vf_flags + ['-f', 'webm']
+        ] + vf_flags
+        flags += self.audio_flag
+        flags += ['-f', 'webm']
 
         if self.context.config.FFMPEG_VP9_VBR is not None:
             flags += ['-b:v', "%s" % self.context.config.FFMPEG_VP9_VBR]
@@ -355,8 +366,11 @@ class Engine(BaseEngine):
         vf_flags = ['-vf', ','.join(self.ffmpeg_vfilters)] if self.ffmpeg_vfilters else []
 
         flags = [
-            '-c:v', 'libx264', '-an', '-pix_fmt', 'yuv420p', '-movflags', 'faststart',
-        ] + vf_flags + ['-f', 'mp4']
+            '-c:v', 'libx264',
+            '-pix_fmt', 'yuv420p', '-movflags', 'faststart',
+        ] + vf_flags
+        flags += self.audio_flag
+        flags += ['-f', 'mp4']
 
         if self.get_config('tune', 'h264'):
             flags += ['-tune', self.get_config('tune', 'h264')]
@@ -393,9 +407,12 @@ class Engine(BaseEngine):
         vf_flags = ['-vf', ','.join(self.ffmpeg_vfilters)] if self.ffmpeg_vfilters else []
 
         flags = [
-            '-c:v', 'hevc', '-tag:v', 'hvc1', '-an', '-pix_fmt', 'yuv420p',
+            '-c:v', 'hevc', '-tag:v', 'hvc1',
+            '-pix_fmt', 'yuv420p',
             '-movflags', 'faststart',
-        ] + vf_flags + ['-f', 'mp4']
+        ] + vf_flags
+        flags += self.audio_flag
+        flags += ['-f', 'mp4']
 
         x265_params = []
 
